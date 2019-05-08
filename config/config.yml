@@ -1,0 +1,184 @@
+---
+default:
+  stations:
+    WWFM:
+      stream_url:    'http://64.202.109.167/live'
+      media_type:    'audio/aacp'
+
+    WDAV:
+      stream_url:    'http://www.wdav.org/streams/wdav-128k.m3u'
+      media_type:    'audio/mpeg'
+
+    KUSC:
+      stream_url:
+        - 'http://16613.live.streamtheworld.com:80/KUSCAAC96_SC'
+        - 'http://16613.live.streamtheworld.com:3690/KUSCAAC96_SC'
+        - 'http://16643.live.streamtheworld.com:80/KUSCAAC96_SC'
+        - 'http://16643.live.streamtheworld.com:3690/KUSCAAC96_SC'
+        - 'http://18903.live.streamtheworld.com:80/KUSCAAC96_SC'
+        - 'http://18903.live.streamtheworld.com:3690/KUSCAAC96_SC'
+        - 'http://14993.live.streamtheworld.com:80/KUSCAAC96_SC'
+        - 'http://14993.live.streamtheworld.com:3690/KUSCAAC96_SC'
+        - 'http://19193.live.streamtheworld.com:80/KUSCAAC96_SC'
+        - 'http://19193.live.streamtheworld.com:3690/KUSCAAC96_SC'
+        - 'http://19223.live.streamtheworld.com:80/KUSCAAC96_SC'
+        - 'http://19223.live.streamtheworld.com:3690/KUSCAAC96_SC'
+        - 'http://19213.live.streamtheworld.com:80/KUSCAAC96_SC'
+        - 'http://19213.live.streamtheworld.com:3690/KUSCAAC96_SC'
+        - 'http://18803.live.streamtheworld.com:80/KUSCAAC96_SC'
+        - 'http://18803.live.streamtheworld.com:3690/KUSCAAC96_SC'
+        - 'http://17953.live.streamtheworld.com:80/KUSCAAC96_SC'
+        - 'http://17953.live.streamtheworld.com:3690/KUSCAAC96_SC'
+      media_type:    'audio/aacp'
+
+    KUSC_MP3:
+      stream_url:
+        - 'http://16643.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://16643.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://17953.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://17953.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://20813.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://20813.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://18803.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://18803.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://19793.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://19793.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://19223.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://19223.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://18493.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://18493.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://18683.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://18683.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://15373.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://15373.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://18903.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://18903.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://16613.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://16613.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://18593.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://18593.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://19193.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://19193.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://14993.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://14993.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://19213.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://19213.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://18393.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://18393.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://18573.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://18573.live.streamtheworld.com:3690/KUSCMP128_SC'
+        - 'http://14093.live.streamtheworld.com:80/KUSCMP128_SC'
+        - 'http://14093.live.streamtheworld.com:3690/KUSCMP128_SC'
+      media_type:    'audio/mpeg'
+
+  testprogs:
+    'Test Program - immediate':
+      station:       'WWFM'
+      schedule:
+        type:        'immediate'
+        duration:    '00:00:10'
+      
+    'Test Program - scheduled':
+      station:       'WWFM'
+      schedule:
+        type:        'once'
+        date:        '2019-05-31'
+        start_time:  '09:00'
+        end_time:    '10:00'
+      
+  programs:
+    'WWFM Morning (Mon)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Mon'
+        start_time:  '10:00'
+        end_time:    '13:00'
+      
+    'WWFM Morning (Tue-Fri)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Tue-Fri'
+        start_time:  '09:00'
+        end_time:    '13:00'
+
+    'WWFM Afternoon (Mon-Fri)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Mon-Fri'
+        start_time:  '13:00'
+        end_time:    '16:00'
+
+    'WWFM Weekend Morning (Bill Jerome)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Sat,Sun'
+        start_time:  '05:00'
+        end_time:    '09:00'
+
+    'Modern Times (Alan Chapman)':
+      station:       'KUSC'
+      schedule:
+        type:        'weekly'
+        days:        'Sat'
+        start_time:  '22:00'
+        duration:    '02:00'
+
+    'Soul Music (Brian Lauritzen)':
+      station:       'KUSC'
+      schedule:
+        type:        'weekly'
+        days:        'Sun'
+        start_time:  '06:00'
+        end_time:    '09:00'
+
+    'A Musical Offering (Alan Chapman)':
+      station:       'KUSC'
+      schedule:
+        type:        'weekly'
+        days:        'Sun'
+        start_time:  '09:00'
+        end_time:    '11:00'
+
+    'The Lost Chord (Ross Amico)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Sun'
+        start_time:  '19:00'
+        end_time:    '20:00'
+
+    'Half Past (Carl Hemmingsen)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Sun'
+        start_time:  '20:00'
+        end_time:    '21:00'
+
+  streamers:
+    vlc:
+      subclass:      'VlcStreamer'
+      media_types:
+        audio/aacp:
+          codec:     'mp4a'
+          muxer:     'mp4'
+          file_type: 'm4a'
+
+        audio/mpeg:
+          codec:     'mp3'
+          muxer:     'mp3'
+          file_type: 'mp3'
+
+  scheduler:
+    jobstore:        'sqlalchemy'
+    # note: *_dir may be absolute, relative (to project), or empty
+    db_dir:          'config'
+    db_file:         'apscheduler.db'
+    rec_dir:         'data'
+
+  server:
+    port:            5000
