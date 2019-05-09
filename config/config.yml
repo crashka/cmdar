@@ -1,4 +1,7 @@
 ---
+##################
+# default config #
+##################
 default:
   stations:
     WWFM:
@@ -71,21 +74,6 @@ default:
         - 'http://14093.live.streamtheworld.com:3690/KUSCMP128_SC'
       media_type:    'audio/mpeg'
 
-  testprogs:
-    'Test Program - immediate':
-      station:       'WWFM'
-      schedule:
-        type:        'immediate'
-        duration:    '00:00:10'
-      
-    'Test Program - scheduled':
-      station:       'WWFM'
-      schedule:
-        type:        'once'
-        date:        '2019-05-31'
-        start_time:  '09:00'
-        end_time:    '10:00'
-      
   programs:
     'WWFM Morning (Mon)':
       station:       'WWFM'
@@ -173,12 +161,40 @@ default:
           muxer:     'mp3'
           file_type: 'mp3'
 
+  # for now there only a single scheduler hard-wired to apscheduler; perhaps
+  # later other scheduler engines may be supported
   scheduler:
     jobstore:        'sqlalchemy'
     # note: *_dir may be absolute, relative (to project), or empty
     db_dir:          'config'
     db_file:         'apscheduler.db'
-    rec_dir:         'data'
+    rec_dir:         '/pergamon/radio'
 
   server:
     port:            5000
+
+##################
+# testing config #
+##################
+testing:
+  programs:
+    'Test Program - immediate':
+      station:       'KUSC'
+      schedule:
+        type:        'immediate'
+        duration:    '00:00:10'
+      
+    'Test Program - scheduled':
+      station:       'KUSC'
+      schedule:
+        type:        'weekly'
+        days:        'Mon-Sun'
+        start_time:  '17:00:00'
+        end_time:    '17:01:00'
+
+  scheduler:
+    jobstore:        'sqlalchemy'
+    # note: *_dir may be absolute, relative (to project), or empty
+    db_dir:          'config'
+    db_file:         'apscheduler_test.db'
+    rec_dir:         '/pergamon/tmp'

@@ -8,6 +8,7 @@ import os.path
 import re
 import logging
 import datetime as dt
+#from random import choice
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
@@ -24,38 +25,15 @@ from streamer import Streamer
 # config stuff #
 ################
 
-SCHEDULER = cfg.config('scheduler')
-
-DB_DIR    = SCHEDULER['db_dir']
-DB_FILE   = SCHEDULER['db_file']
-if not DB_DIR:
-    DB_PATH = DB_FILE
-elif DB_DIR[0] in ('/.'):
-    DB_PATH = os.path.join(DB_DIR, DB_FILE)
-else:
-    DB_PATH = os.path.join(BASE_DIR, DB_DIR, DB_FILE)
-DB_URL    = 'sqlite:///' + DB_PATH
-
-REC_DIR = SCHEDULER['rec_dir']
-if not REC_DIR:
-    REC_PATH = '.'
-elif REC_DIR[0] in ('/.'):
-    REC_PATH = REC_DIR
-else:
-    REC_PATH = os.path.join(BASE_DIR, REC_DIR)
-# detect bad rec_dir on module load to avoid later embarrassment
-if not os.path.isdir(REC_PATH):
-    raise ConfigError("rec_dir \"%s\" is not a valid directory" % (REC_DIR))
-
 ScheduleType  = LOV(['IMMEDIATE',
                      'ONCE',
                      'DAILY',
                      'WEEKLY',
                      'MONTHLY'], 'lower')
 
-##################
-# util functions #
-##################
+#####################
+# utility functions #
+#####################
 
 def schedule_trigger(sched):
     """Get trigger information from schedule structure
@@ -110,9 +88,9 @@ def schedule_duration(sched):
     return delta.seconds
 
 
-#######################
-# scheduler functions #
-#######################
+#########################
+# apscheduler functions #
+#########################
 
 APSCHED_EVENTS = ['EVENT_SCHEDULER_STARTED',
                   'EVENT_SCHEDULER_SHUTDOWN',
@@ -156,47 +134,22 @@ def apsched_listener(event):
                 'alias'    : event.alias}
     log.error(info) if info.get('exception') else log.info(info)
 
-def apsched_init(debug = 0):
-    """Initialize and return scheduler handle
+def apsched_init(db_path, debug = 0):
+    """Initialize and return apscheduler handle
     """
-    if debug > 0:
+    if debug > 3:
         logging.basicConfig()
         logging.getLogger('apscheduler').setLevel(logging.DEBUG)
 
-    apsched = BackgroundScheduler()
-    apsched.add_jobstore(SQLAlchemyJobStore(url=DB_URL))
-    apsched.add_listener(apsched_listener)
-    return apsched
+    sched = BackgroundScheduler()
+    db_url = 'sqlite:///' + db_path
+    sched.add_jobstore(SQLAlchemyJobStore(url=db_url))
+    sched.add_listener(apsched_listener)
+    return sched
 
-################
-# DAR entities #
-################
-
-"""
-Dar Entities:
-  - Station
-    - Create
-    - Record
-    - Delete
-  - Program
-    - Create
-    - Record
-    - Delete
-  - Todo Item
-    - Create
-    - Suspend
-    - Resume
-    - Delete
-  - Recording
-    - Start
-    - Stop
-    - Delete
-  - Tuner
-    - Start
-    - Change
-    - Record
-    - Stop
-"""
+######################
+# streamer functions #
+######################
 
 def validate_streamer(streamer):
     """
@@ -208,85 +161,205 @@ def validate_streamer(streamer):
 def do_record(streamer, *args, **kwargs):
     """
     """
+    # REVISIT: this is a little bit of a fudge, need to rethink the relatioship between
+    # debug and verbosity levels across the streamer and scheduler modules!!!
+    debug = kwargs.get('verbose', 0)
+    if debug > 0:
+        log.setLevel(logging.DEBUG)
+        log.addHandler(dbg_hand)
+
     engine = Streamer.get(streamer)
     return engine.save_stream(*args, **kwargs)
+
+################
+# DAR entities #
+################
+
+"""
+- Dar (recorder)
+- Station
+- Program
+- Todo Item
+- Recording
+- Tuner
+"""
 
 class Dar(object):
     """
     """
-    def __init__(self):
+    def __init__(self, debug = 0, testing = False):
         """
         """
-        self.stations   = cfg.config('stations')
-        self.programs   = cfg.config('programs')
-        self.testprogs  = cfg.config('testprogs')
-        self.todo_items = {}
-        self.recordings = {}
-        self.tuners     = {}
+        cfg_profile = 'testing' if testing else None
+        self.stations    = cfg.config('stations', cfg_profile)
+        self.programs    = cfg.config('programs', cfg_profile)
+        self.scheduler   = cfg.config('scheduler', cfg_profile)
+        self.todo_items  = {}
+        self.recordings  = {}
+        self.tuners      = {}
+
+        self.db_dir      = self.scheduler['db_dir']
+        self.db_file     = self.scheduler['db_file']
+        self.rec_dir     = self.scheduler['rec_dir']
+
+        if not self.db_dir:
+            self.db_path = self.db_file
+        elif self.db_dir[0] in ('/.'):
+            self.db_path = os.path.join(self.db_dir, self.db_file)
+        else:
+            self.db_path = os.path.join(BASE_DIR, self.db_dir, self.db_file)
+        self.sched = apsched_init(self.db_path, debug)
+
+        if not self.rec_dir:
+            self.rec_path = '.'
+        elif self.rec_dir[0] in ('/.'):
+            self.rec_path = self.rec_dir
+        else:
+            self.rec_path = os.path.join(BASE_DIR, self.rec_dir)
+        # detect bad rec_dir on instantiation to avoid later embarrassment
+        if not os.path.isdir(self.rec_path):
+            raise ConfigError("rec_dir \"%s\" is not a valid directory" % (self.rec_dir))
 
 class Station(object):
     """
+    - Create
+    - Record
+    - Delete
     """
     def __init__(self):
         """
         """
         pass
     
-    def record_manual(station, sched_info, save_as_program = None):
+    def create(self):
         """
-        :param station: Station or name
+        """
+        pass
+
+    def record(self, sched_info, save_as_program = None):
+        """Manually start/schedule a recording
+
         :param sched_info: config file format (dict)
         :param save_as_program: program name (or don't save, if not specified)
         """
         pass
 
+    def delete(self):
+        """
+        """
+        pass
+
 class Program(object):
     """
+    - Create
+    - Record
+    - Delete
     """
     def __init__(self):
         """
         """
         pass
     
-    def record_program(program, repeating = True):
+    def create(self):
+        """
+        """
+        pass
+
+    def record(self, repeating = True):
+        """
+        """
+        pass
+
+    def delete(self):
         """
         """
         pass
 
 class TodoItem(object):
     """
+    - Create
+    - Suspend
+    - Resume
+    - Delete
     """
     def __init__(self):
         """
         """
     
-    def suspend_todo_item():
+    def create(self):
         """
         """
         pass
 
-    def resume_todo_item():
+    def suspend(self):
         """
         """
         pass
 
-    def delete_todo_item():
+    def resume(self):
+        """
+        """
+        pass
+
+    def delete(self):
         """
         """
         pass
 
 class Recording(object):
     """
+    - Start
+    - Stop
+    - Delete
     """
     def __init__(self):
         """
         """
         pass
     
+    def start(self):
+        """
+        """
+        pass
+
+    def stop(self):
+        """
+        """
+        pass
+
+    def delete(self):
+        """
+        """
+        pass
+
 class Tuner(object):
     """
+    - Start
+    - Change
+    - Record
+    - Stop
     """
     def __init__(self):
+        """
+        """
+        pass
+
+    def start(self):
+        """
+        """
+        pass
+
+    def change(self):
+        """
+        """
+        pass
+
+    def record(self):
+        """
+        """
+        pass
+
+    def stop(self):
         """
         """
         pass
@@ -300,62 +373,98 @@ import click
 from core import dbg_hand
 
 @click.command()
-@click.option('--list',     'cmd', flag_value='list', default=True, help="List scheduled jobs")
-@click.option('--reload',   'cmd', flag_value='reload', help="Reload jobs from config file")
-@click.option('--run',      'cmd', flag_value='run', help="Run the audio recorder")
-@click.option('--time',     default=9999999, help="Time (in seconds) to run (forever, if not specified)")
+@click.option('--list',     'list_jobs', is_flag=True, help="List scheduled jobs")
+@click.option('--reload',   is_flag=True, help="Reload programs/jobs from config file")
+@click.option('--norun',    is_flag=True, help="Do not run the audio recorder (e.g. list or reload only)")
+@click.option('--time',     'run_time', default=9999999, help="Time (in seconds) to run (forever, if not specified)")
 @click.option('--streamer', default='vlc', help="Name of streamer in config file (defaults to 'vlc')")
-@click.option('--nowait',   is_flag=True, help="Do not wait for jobs to complete when terminating")
+@click.option('--nowait',   is_flag=True, help="Do not wait for jobs to complete when time expires")
 @click.option('--debug',    default=0, help="Debug level (0-3)")
+@click.option('--testing',  is_flag=True, help="Use 'testing' profile in config file")
 #@click.argument('name',    default='all', required=True)
-def main(cmd, time, streamer, nowait, debug):
+def main(list_jobs, reload, norun, run_time, streamer, nowait, debug, testing):
     """Digital Audio Recorder command line interface
     """
     if debug > 0:
-        log.setLevel(logging.DEBUG)
+        log.setLevel(logging.DEBUG if debug > 1 else logging.INFO)
         log.addHandler(dbg_hand)
 
-    recorder = Dar()
-    programs = recorder.testprogs
+    dar = Dar(debug, testing)
+    # NOTE: creating 'sched' for convenience, and pretending that this could be a generic
+    # scheduler handle (though the semantics below are unabashedly those of apscheduler)
+    sched = dar.sched
 
-    apsched = apsched_init(debug)
-
-    if cmd == 'reload':
+    if reload:
         validate_streamer(streamer)
-        for prog, info in programs.items():
+        if not sched.running:
+            sched.start(paused=True)
+
+        prev_jobs = set([job.id for job in sched.get_jobs()])
+        load_jobs = set()
+
+        for prog, info in dar.programs.items():
             station_name = info['station']
             sched_info   = info['schedule']
-            station      = recorder.stations[station_name]
-            url          = station['stream_url']
+            station      = dar.stations[station_name]
+            if isinstance(station['stream_url'], list):
+                # LATER: perhaps choose at random (if assuming all URLs are reliable),
+                # but for now we take the same (last) one on the list for consistency
+                #url      = choice(station['stream_url'])
+                url      = station['stream_url'][-1]
+            else:
+                url      = station['stream_url']
             media_type   = station['media_type']
 
-            station_path = os.path.join(REC_PATH, station_name)
+            station_path = os.path.join(dar.rec_path, station_name)
             if not os.path.isdir(station_path):
                 os.mkdir(station_path)
             filebase     = os.path.join(station_path, station_name.lower())
             duration     = schedule_duration(sched_info)
             trigger      = schedule_trigger(sched_info)
 
+            name         = "%s [dur %s]" % (prog, str(dt.timedelta(0, duration)))
             args         = (streamer, url, media_type, filebase, duration)
-            kwargs       = {'add_ts': True}
-            apsched.add_job(do_record, trigger, args=args, kwargs=kwargs, id=prog, name=prog,
+            # TODO: get parameters for the streamer from the config file (hard-wiring
+            # values to use for now)!!!
+            kwargs       = {'add_ts': True, 'verbose': 1}
+            sched.add_job(do_record, trigger, args=args, kwargs=kwargs, id=prog, name=name,
                             replace_existing=True, misfire_grace_time=300)
+            load_jobs.add(prog)
 
-        apsched.start(paused=True)
-        for job in apsched.get_jobs():
-            if job.id in programs:
-                print("Added job \"%s\":\n  %s" % (job.id, str(job)))
-            else:
-                job.pause()
-                print("Pausing job \"%s\":\n  %s" % (job.id, str(job)))
-    elif cmd == 'list':
-        apsched.start(paused=True)
-        for job in apsched.get_jobs():
-            print("Scheduled job \"%s\":\n  %s" % (job.id, str(job)))
-    elif cmd == 'run':
-        apsched.start()
-        sleep(time)
-        apsched.shutdown(wait=(not nowait))
+        new_jobs = load_jobs.difference(prev_jobs)
+        upd_jobs = load_jobs.intersection(prev_jobs)
+        obs_jobs = prev_jobs.difference(load_jobs)
+
+        print("Loading/reloading jobs from config file...")
+        for job in [sched.get_job(id) for id in new_jobs]:
+            print("  Added new job \"%s\":\n    %s" % (job.id, str(job)))
+        for job in [sched.get_job(id) for id in upd_jobs]:
+            print("  Updated existing job \"%s\":\n    %s" % (job.id, str(job)))
+        for job in [sched.get_job(id) for id in obs_jobs]:
+            job.pause()
+            #job = sched.get_job(job.id)
+            print("  Pausing obsolete job \"%s\":\n    %s" % (job.id, str(job)))
+
+    if list_jobs:
+        if not sched.running:
+            sched.start(paused=True)
+
+        print("Listing scheduled jobs...")
+        for job in sched.get_jobs():
+            status = "Scheduled" if job.next_run_time else "Paused"
+            print("  %s job \"%s\":\n    %s" % (status, job.id, str(job)))
+
+    if norun:
+        if sched.running:
+            sched.shutdown()
+    else:
+        print("Running scheduler for %s..." % (str(dt.timedelta(0, run_time))))
+        if not sched.running:
+            sched.start()
+        else:
+            sched.resume()  # no-op if actively running (not paused)
+        sleep(run_time)
+        sched.shutdown(wait=(not nowait))
 
 if __name__ == '__main__':
     main()
