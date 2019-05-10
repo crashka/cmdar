@@ -19,7 +19,7 @@ from apscheduler.events import *
 
 from __init__ import *
 from core import BASE_DIR, cfg, log, dbg_hand
-from utils import LOV, str2timedelta, str2datetime, str2time, str2time_dt
+from utils import LOV, str2timedelta, str2datetime, str2time, str2time_dt, truthy
 from streamer import Streamer
 
 #####################
@@ -199,7 +199,7 @@ ProgramState  = LOV(['ACTIVE',
                      'INACTIVE'],
                     'lower')
 
-TodoState     = LOV(['QUEUE',
+TodoState     = LOV(['QUEUED',
                      'SUSPENDED'],
                     'lower')
 
@@ -324,6 +324,36 @@ class Dar(object):
             self.sched.start(paused=True)
         return self.sched.get_job(job_id)
 
+    def schedule_item(self, label, item_info):
+        """
+        """
+        station_name = item_info['station']
+        sched_info   = item_info['schedule']
+        station      = self.stations[station_name]
+        if isinstance(station['stream_url'], list):
+            # LATER: perhaps choose at random (if assuming all URLs are reliable),
+            # but for now we take the same (last) one on the list for consistency
+            #url      = choice(station['stream_url'])
+            url      = station['stream_url'][-1]
+        else:
+            url      = station['stream_url']
+        media_type   = station['media_type']
+
+        station_path = os.path.join(self.rec_path, station_name)
+        if not os.path.isdir(station_path):
+            os.mkdir(station_path)
+        filebase     = os.path.join(station_path, station_name.lower())
+        duration     = schedule_duration(sched_info)
+        trigger      = schedule_trigger(sched_info)
+
+        name         = "%s [dur %s]" % (label, str(dt.timedelta(0, duration)))
+        args         = (self.streamer, self.cfg_profile, url, media_type, filebase, duration)
+        # TODO: get parameters for the streamer from the config file (hard-wiring
+        # values to use for now)!!!
+        kwargs       = {'add_ts': True, 'verbose': 1}
+        self.sched.add_job('dar:do_record', trigger, args=args, kwargs=kwargs, id=label,
+                           name=name, replace_existing=True, misfire_grace_time=300)
+
     def reload_programs(self, do_create = True, do_update = True, do_pause = False):
         """Reload program definitions from ``config.yml`` and schedule jobs for them automatically
 
@@ -345,53 +375,27 @@ class Dar(object):
         for prog, info in self.programs.items():
             loaded_jobs.add(prog)
             if prog in current_jobs:
-                if do_update:
+                if truthy(do_update):
                     log.debug("Updating job for program \"%s\"" % (prog))
                     updated_jobs.add(prog)
                 else:
                     log.debug("NOT updating existing job for program \"%s\"" % (prog))
                     continue
             else:
-                if do_create:
+                if truthy(do_create):
                     log.debug("Creating job for program \"%s\"" % (prog))
                     created_jobs.add(prog)
                 else:
                     log.debug("NOT creating new job for program \"%s\"" % (prog))
                     continue
-
-            station_name = info['station']
-            sched_info   = info['schedule']
-            station      = self.stations[station_name]
-            if isinstance(station['stream_url'], list):
-                # LATER: perhaps choose at random (if assuming all URLs are reliable),
-                # but for now we take the same (last) one on the list for consistency
-                #url      = choice(station['stream_url'])
-                url      = station['stream_url'][-1]
-            else:
-                url      = station['stream_url']
-            media_type   = station['media_type']
-
-            station_path = os.path.join(self.rec_path, station_name)
-            if not os.path.isdir(station_path):
-                os.mkdir(station_path)
-            filebase     = os.path.join(station_path, station_name.lower())
-            duration     = schedule_duration(sched_info)
-            trigger      = schedule_trigger(sched_info)
-
-            name         = "%s [dur %s]" % (prog, str(dt.timedelta(0, duration)))
-            args         = (self.streamer, self.cfg_profile, url, media_type, filebase, duration)
-            # TODO: get parameters for the streamer from the config file (hard-wiring
-            # values to use for now)!!!
-            kwargs       = {'add_ts': True, 'verbose': 1}
-            self.sched.add_job('dar:do_record', trigger, args=args, kwargs=kwargs, id=prog,
-                               name=name, replace_existing=True, misfire_grace_time=300)
+            self.schedule_item(prog, info)
 
         new_jobs      = loaded_jobs.difference(current_jobs)
         existing_jobs = loaded_jobs.intersection(current_jobs)
         obsolete_jobs = current_jobs.difference(loaded_jobs)
 
         for job_id in obsolete_jobs:
-            if do_pause:
+            if truthy(do_pause):
                 log.debug("Pausing job for program \"%s\"" % (job_id))
                 paused_jobs.add(prog)
                 self.sched.get_job(job_id).pause()

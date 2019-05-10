@@ -6,11 +6,11 @@
 
 import logging
 
-from flask import Flask, jsonify
+from flask import Flask, request, jsonify
 import click
 
 from core import BASE_DIR, cfg, log, dbg_hand
-from dar import Dar
+from dar import Dar, TodoState
 
 #############
 # Flask App #
@@ -94,18 +94,27 @@ def dar_resume():
 
 @app.route('/dar/shutdown')
 def dar_shutdown():
-    return jsonify(result=dar.stop_scheduler())
+    try:
+        result = dar.stop_scheduler(**request.args)
+    except TypeError as e:
+        log.info("Caught TypeError: %s" % (str(e)))
+        return "Error: " + str(e), 400
+    return jsonify(result=result)
 
 @app.route('/programs/reload')
 def programs_reload():
-    result = dar.reload_programs()
+    try:
+        result = dar.reload_programs(**request.args)
+    except TypeError as e:
+        log.info("Caught TypeError: %s" % (str(e)))
+        return "Error: " + str(e), 400
     return jsonify({i: list(j) for i, j in result.items()})
 
 @app.route('/todos')
 def todos_list():
     todos = []
     for job in dar.get_jobs():
-        status = "Queued" if job.next_run_time else "Suspended"
+        status = TodoState.QUEUED if job.next_run_time else TodoState.SUSPENDED
         todos.append({'id': job.id, 'status': status, 'info': str(job)})
     return jsonify(todos)
 
