@@ -13,12 +13,6 @@ import datetime as dt
 from core import cfg, log
 from utils import LOV, str2time_dt
 
-################
-# config stuff #
-################
-
-STREAMERS = cfg.config('streamers')
-
 ##############
 # base class #
 ##############
@@ -29,13 +23,14 @@ class Streamer(object):
     Note: this method sets "name" and "info" (config parameters) subclass attributes
     """
     @classmethod
-    def get(cls, name):
+    def get(cls, name, cfg_profile = None):
         """
         :param name: name of streamer defined in config.yml
         """
-        if name not in STREAMERS:
+        streamers = cfg.config('streamers', cfg_profile)
+        if name not in streamers:
             raise RuntimeError("Streamer \"%s\" not known" % (name))
-        info = STREAMERS[name]
+        info = streamers[name]
         subcls = getattr(sys.modules[cls.__module__], info['subclass'])
         subcls.name = name
         subcls.info = info
@@ -51,7 +46,7 @@ class Streamer(object):
         :param force: whether to overwrite existing file (bool)
         :param verbose: level (0-3) or False|True (same as 0|1)
         :param dryrun: build command, but do not execute (bool)
-        :return: path to saved stream (or command args, if dryrun=True)
+        :return: pathname of saved stream (or command args, if dryrun=True)
         """
         raise NotImplementedError("abstract method")
 
@@ -83,7 +78,7 @@ class VlcStreamer(Streamer):
         :param force: whether to overwrite existing file (bool)
         :param verbose: level (0-3) or False|True (same as 0|1)
         :param dryrun: build command, but do not execute (bool)
-        :return: path to saved stream (or command line, if dryrun=True)
+        :return: pathname of saved stream (or command line, if dryrun=True)
         """
         if not hasattr(cls, 'name') or not hasattr(cls, 'info'):
             raise RuntimeError("%s must be obtained through Streamer.get()" % (cls.__name__))
@@ -118,11 +113,16 @@ class VlcStreamer(Streamer):
         log.info("Saving stream, cmd = '%s'" % (' '.join(args)))
         cp = subprocess.run(args, check=True, text=True, capture_output=True)
         # VLC does not have non-zero returncode on error, have to grep through stderr
+        ignore = set(cls.info.get('ignore_errors', []))
         errors = []
         for line in cp.stderr.splitlines():
             m = re.fullmatch(r'(\[[0-9a-f]+\]) ([\w ]+) error: (.+)', line)
             if m:
-                errors.append(m.group(3))
+                error_msg = m.group(3)
+                if error_msg in ignore:
+                    log.info("Ignoring error: \"%s\"" % (error_msg))
+                else:
+                    errors.append(error_msg)
         if errors:
             log.info("Errors: %s" % (errors))
             log.debug("Full stderr:\n" + cp.stderr.rstrip())

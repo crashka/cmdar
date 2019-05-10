@@ -158,8 +158,16 @@ def validate_streamer(streamer):
     if not issubclass(engine, Streamer) or type(engine) is Streamer:
         raise RuntimeError("Bad engine type \"%s\" for \"%s\"" % (engine.__name__, streamer))
 
-def do_record(streamer, *args, **kwargs):
+def do_record(streamer, cfg_profile, *args, **kwargs):
     """
+    Note that streamer and cfg_profile must be positional args (no defaults), so that
+    additional positional args (and keyword args) can be passed to Streamer.get()
+
+    :param streamer: streamer name identifying parameters in config.yml
+    :param cfg_profile: must be specified (or None)
+    :param args: passed through to streamer engine
+    :param kwargs: passed through to streamer engine
+    :return: pathname of recorded stream
     """
     # REVISIT: this is a little bit of a fudge, need to rethink the relatioship between
     # debug and verbosity levels across the streamer and scheduler modules!!!
@@ -168,7 +176,7 @@ def do_record(streamer, *args, **kwargs):
         log.setLevel(logging.DEBUG)
         log.addHandler(dbg_hand)
 
-    engine = Streamer.get(streamer)
+    engine = Streamer.get(streamer, cfg_profile)
     return engine.save_stream(*args, **kwargs)
 
 ################
@@ -187,13 +195,15 @@ def do_record(streamer, *args, **kwargs):
 class Dar(object):
     """
     """
-    def __init__(self, debug = 0, testing = False):
+    def __init__(self, debug = 0, cfg_profile = None):
         """
         """
-        cfg_profile = 'testing' if testing else None
-        self.stations    = cfg.config('stations', cfg_profile)
-        self.programs    = cfg.config('programs', cfg_profile)
-        self.scheduler   = cfg.config('scheduler', cfg_profile)
+        self.debug       = debug
+        self.cfg_profile = cfg_profile
+
+        self.stations    = cfg.config('stations', self.cfg_profile)
+        self.programs    = cfg.config('programs', self.cfg_profile)
+        self.scheduler   = cfg.config('scheduler', self.cfg_profile)
         self.todo_items  = {}
         self.recordings  = {}
         self.tuners      = {}
@@ -208,7 +218,7 @@ class Dar(object):
             self.db_path = os.path.join(self.db_dir, self.db_file)
         else:
             self.db_path = os.path.join(BASE_DIR, self.db_dir, self.db_file)
-        self.sched = apsched_init(self.db_path, debug)
+        self.sched = apsched_init(self.db_path, self.debug)
 
         if not self.rec_dir:
             self.rec_path = '.'
@@ -220,6 +230,118 @@ class Dar(object):
         if not os.path.isdir(self.rec_path):
             raise ConfigError("rec_dir \"%s\" is not a valid directory" % (self.rec_dir))
 
+    def reload_programs(self, streamer, do_create = True, do_update = True, do_pause = False):
+        """Reload program definitions from ``config.yml`` and schedule jobs for them automatically
+
+        :param streamer: streamer name identifying parameters in ``config.yml``
+        :param do_create: schedule new jobs for programs (defaults to True)
+        :param do_update: update existing jobs for programs (defaults to True)
+        :param do_pause: pause jobs for programs not found in config (defaults to False)
+        :return: {'created': set(<ids>), 'updated': set(<ids>), 'paused': set(<ids>)}
+        """
+        validate_streamer(streamer)
+        # REVISIT: should we reset the state of the scheduler before returning???
+        if not self.sched.running:
+            self.sched.start(paused=True)
+
+        current_jobs = set([job.id for job in self.sched.get_jobs()])
+        loaded_jobs  = set()
+        created_jobs = set()
+        updated_jobs = set()
+        paused_jobs  = set()
+
+        for prog, info in self.programs.items():
+            loaded_jobs.add(prog)
+            if prog in current_jobs:
+                if do_update:
+                    log.debug("Updating job for program \"%s\"" % (prog))
+                    updated_jobs.add(prog)
+                else:
+                    log.debug("NOT updating existing job for program \"%s\"" % (prog))
+                    continue
+            else:
+                if do_create:
+                    log.debug("Creating job for program \"%s\"" % (prog))
+                    created_jobs.add(prog)
+                else:
+                    log.debug("NOT creating new job for program \"%s\"" % (prog))
+                    continue
+
+            station_name = info['station']
+            sched_info   = info['schedule']
+            station      = self.stations[station_name]
+            if isinstance(station['stream_url'], list):
+                # LATER: perhaps choose at random (if assuming all URLs are reliable),
+                # but for now we take the same (last) one on the list for consistency
+                #url      = choice(station['stream_url'])
+                url      = station['stream_url'][-1]
+            else:
+                url      = station['stream_url']
+            media_type   = station['media_type']
+
+            station_path = os.path.join(self.rec_path, station_name)
+            if not os.path.isdir(station_path):
+                os.mkdir(station_path)
+            filebase     = os.path.join(station_path, station_name.lower())
+            duration     = schedule_duration(sched_info)
+            trigger      = schedule_trigger(sched_info)
+
+            name         = "%s [dur %s]" % (prog, str(dt.timedelta(0, duration)))
+            args         = (streamer, self.cfg_profile, url, media_type, filebase, duration)
+            # TODO: get parameters for the streamer from the config file (hard-wiring
+            # values to use for now)!!!
+            kwargs       = {'add_ts': True, 'verbose': 1}
+            self.sched.add_job(do_record, trigger, args=args, kwargs=kwargs, id=prog, name=name,
+                               replace_existing=True, misfire_grace_time=300)
+
+        new_jobs      = loaded_jobs.difference(current_jobs)
+        existing_jobs = loaded_jobs.intersection(current_jobs)
+        obsolete_jobs = current_jobs.difference(loaded_jobs)
+
+        for job_id in obsolete_jobs:
+            if do_pause:
+                log.debug("Pausing job for program \"%s\"" % (job_id))
+                paused_jobs.add(prog)
+                self.sched.get_job(job_id).pause()
+            else:
+                log.debug("NOT pausing job for program \"%s\"" % (job_id))
+
+        return {'created': created_jobs, 'updated': updated_jobs, 'paused': paused_jobs}
+
+    def get_jobs(self):
+        """
+        :return: list of jobs (apscheduler.job)
+        """
+        # REVISIT: should we reset the state of the scheduler before returning???
+        if not self.sched.running:
+            self.sched.start(paused=True)
+        return self.sched.get_jobs()
+
+    def get_job(self, job_id):
+        """
+        :return: apscheduler.job
+        """
+        # REVISIT: should we reset the state of the scheduler before returning???
+        if not self.sched.running:
+            self.sched.start(paused=True)
+        return self.sched.get_job(job_id)
+
+    def start_scheduler(self):
+        """
+        :return: void
+        """
+        if not self.sched.running:
+            self.sched.start()
+        else:
+            self.sched.resume()  # no-op if actively running (i.e. not paused)
+
+    def stop_scheduler(self, wait_for_jobs = True):
+        """
+        :return: void
+        """
+        if self.sched.running:
+            self.sched.shutdown(wait=wait_for_jobs)
+
 class Station(object):
     """
     - Create
@@ -230,7 +352,7 @@ class Station(object):
         """
         """
         pass
-    
+
     def create(self):
         """
         """
@@ -259,7 +381,7 @@ class Program(object):
         """
         """
         pass
-    
+
     def create(self):
         """
         """
@@ -285,7 +407,7 @@ class TodoItem(object):
     def __init__(self):
         """
         """
-    
+
     def create(self):
         """
         """
@@ -316,7 +438,7 @@ class Recording(object):
         """
         """
         pass
-    
+
     def start(self):
         """
         """
@@ -388,83 +510,35 @@ def main(list_jobs, reload, norun, run_time, streamer, nowait, debug, testing):
     if debug > 0:
         log.setLevel(logging.DEBUG if debug > 1 else logging.INFO)
         log.addHandler(dbg_hand)
+    profile = 'testing' if testing else None
 
-    dar = Dar(debug, testing)
-    # NOTE: creating 'sched' for convenience, and pretending that this could be a generic
-    # scheduler handle (though the semantics below are unabashedly those of apscheduler)
-    sched = dar.sched
+    dar = Dar(debug, profile)
 
     if reload:
-        validate_streamer(streamer)
-        if not sched.running:
-            sched.start(paused=True)
-
-        prev_jobs = set([job.id for job in sched.get_jobs()])
-        load_jobs = set()
-
-        for prog, info in dar.programs.items():
-            station_name = info['station']
-            sched_info   = info['schedule']
-            station      = dar.stations[station_name]
-            if isinstance(station['stream_url'], list):
-                # LATER: perhaps choose at random (if assuming all URLs are reliable),
-                # but for now we take the same (last) one on the list for consistency
-                #url      = choice(station['stream_url'])
-                url      = station['stream_url'][-1]
-            else:
-                url      = station['stream_url']
-            media_type   = station['media_type']
-
-            station_path = os.path.join(dar.rec_path, station_name)
-            if not os.path.isdir(station_path):
-                os.mkdir(station_path)
-            filebase     = os.path.join(station_path, station_name.lower())
-            duration     = schedule_duration(sched_info)
-            trigger      = schedule_trigger(sched_info)
-
-            name         = "%s [dur %s]" % (prog, str(dt.timedelta(0, duration)))
-            args         = (streamer, url, media_type, filebase, duration)
-            # TODO: get parameters for the streamer from the config file (hard-wiring
-            # values to use for now)!!!
-            kwargs       = {'add_ts': True, 'verbose': 1}
-            sched.add_job(do_record, trigger, args=args, kwargs=kwargs, id=prog, name=name,
-                            replace_existing=True, misfire_grace_time=300)
-            load_jobs.add(prog)
-
-        new_jobs = load_jobs.difference(prev_jobs)
-        upd_jobs = load_jobs.intersection(prev_jobs)
-        obs_jobs = prev_jobs.difference(load_jobs)
-
         print("Loading/reloading jobs from config file...")
-        for job in [sched.get_job(id) for id in new_jobs]:
+
+        jobs = dar.reload_programs(streamer, do_create=True, do_update=True, do_pause=True)
+        for job in [dar.get_job(id) for id in jobs['created']]:
             print("  Added new job \"%s\":\n    %s" % (job.id, str(job)))
-        for job in [sched.get_job(id) for id in upd_jobs]:
+        for job in [dar.get_job(id) for id in jobs['updated']]:
             print("  Updated existing job \"%s\":\n    %s" % (job.id, str(job)))
-        for job in [sched.get_job(id) for id in obs_jobs]:
-            job.pause()
-            #job = sched.get_job(job.id)
-            print("  Pausing obsolete job \"%s\":\n    %s" % (job.id, str(job)))
+        for job in [dar.get_job(id) for id in jobs['paused']]:
+            print("  Paused obsolete job \"%s\":\n    %s" % (job.id, str(job)))
 
     if list_jobs:
-        if not sched.running:
-            sched.start(paused=True)
-
         print("Listing scheduled jobs...")
-        for job in sched.get_jobs():
+
+        for job in dar.get_jobs():
             status = "Scheduled" if job.next_run_time else "Paused"
             print("  %s job \"%s\":\n    %s" % (status, job.id, str(job)))
 
-    if norun:
-        if sched.running:
-            sched.shutdown()
-    else:
+    if not norun:
         print("Running scheduler for %s..." % (str(dt.timedelta(0, run_time))))
-        if not sched.running:
-            sched.start()
-        else:
-            sched.resume()  # no-op if actively running (not paused)
+
+        dar.start_scheduler()
         sleep(run_time)
-        sched.shutdown(wait=(not nowait))
+
+    dar.stop_scheduler()
 
 if __name__ == '__main__':
     main()

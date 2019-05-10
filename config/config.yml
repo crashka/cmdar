@@ -82,7 +82,7 @@ default:
         days:        'Mon'
         start_time:  '10:00'
         end_time:    '13:00'
-      
+
     'WWFM Morning (Tue-Fri)':
       station:       'WWFM'
       schedule:
@@ -179,18 +179,41 @@ default:
 testing:
   programs:
     'Test Program - immediate':
-      station:       'KUSC'
+      station:       'KUSC_MP3'
       schedule:
         type:        'immediate'
         duration:    '00:00:10'
-      
+
     'Test Program - scheduled':
-      station:       'KUSC'
+      station:       'KUSC_MP3'
       schedule:
         type:        'weekly'
         days:        'Mon-Sun'
         start_time:  '17:00:00'
         end_time:    '17:01:00'
+
+  streamers:
+    vlc:
+      subclass:      'VlcStreamer'
+      media_types:
+        audio/aacp:
+          codec:     'mp4a'
+          muxer:     'mp4'
+          file_type: 'm4a'
+
+        audio/mpeg:
+          codec:     'mp3'
+          muxer:     'mp3'
+          file_type: 'mp3'
+
+      ignore_errors:
+        - 'PulseAudio server connection failure: Connection refused'
+        - 'Failed to connect to the D-Bus session daemon: Unable to autolaunch a dbus-daemon without a $DISPLAY for X11'
+        - 'no suitable interface module'
+        - 'interface "dbus,none" initialization failed'
+        - 'no suitable interface module'
+        - 'interface "globalhotkeys,none" initialization failed'
+        - 'unimplemented query (264) in control'
 
   scheduler:
     jobstore:        'sqlalchemy'
