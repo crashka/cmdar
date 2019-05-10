@@ -3,3 +3,4 @@ sqlalchemy
 mutagen
 pyyaml
 click
+flask

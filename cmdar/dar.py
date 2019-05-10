@@ -10,6 +10,7 @@ import logging
 import datetime as dt
 #from random import choice
 
+import apscheduler.schedulers as schedulers
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from apscheduler.triggers.date import DateTrigger
@@ -17,23 +18,19 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.events import *
 
 from __init__ import *
-from core import BASE_DIR, cfg, log
+from core import BASE_DIR, cfg, log, dbg_hand
 from utils import LOV, str2timedelta, str2datetime, str2time, str2time_dt
 from streamer import Streamer
 
-################
-# config stuff #
-################
+#####################
+# utility functions #
+#####################
 
 ScheduleType  = LOV(['IMMEDIATE',
                      'ONCE',
                      'DAILY',
                      'WEEKLY',
                      'MONTHLY'], 'lower')
-
-#####################
-# utility functions #
-#####################
 
 def schedule_trigger(sched):
     """Get trigger information from schedule structure
@@ -163,7 +160,7 @@ def do_record(streamer, cfg_profile, *args, **kwargs):
     Note that streamer and cfg_profile must be positional args (no defaults), so that
     additional positional args (and keyword args) can be passed to Streamer.get()
 
-    :param streamer: streamer name identifying parameters in config.yml
+    :param streamer: streamer name in config.yml
     :param cfg_profile: must be specified (or None)
     :param args: passed through to streamer engine
     :param kwargs: passed through to streamer engine
@@ -184,20 +181,42 @@ def do_record(streamer, cfg_profile, *args, **kwargs):
 ################
 
 """
-- Dar (recorder)
-- Station
-- Program
-- Todo Item
-- Recording
-- Tuner
+Entities:
+  - Dar (recorder)
+  - Station
+  - Program
+  - Todo Item
+  - Recording
+  - Tuner
 """
+
+DarState      = LOV(['SHUTDOWN',
+                     'STARTED',
+                     'PAUSED'],
+                    'lower')
+
+ProgramState  = LOV(['ACTIVE',
+                     'INACTIVE'],
+                    'lower')
+
+TodoState     = LOV(['QUEUE',
+                     'SUSPENDED'],
+                    'lower')
+
+TunerState    = LOV(['ACTIVE',
+                     'INACTIVE'],
+                    'lower')
 
 class Dar(object):
     """
     """
-    def __init__(self, debug = 0, cfg_profile = None):
+    def __init__(self, streamer, debug = 0, cfg_profile = None):
         """
+        :param streamer: streamer name in ``config.yml``
+        :param debug: integer 0-3 (default: 0)
+        :param cfg_profile: optional (None means ``default``)
         """
+        self.streamer    = streamer
         self.debug       = debug
         self.cfg_profile = cfg_profile
 
@@ -230,16 +249,89 @@ class Dar(object):
         if not os.path.isdir(self.rec_path):
             raise ConfigError("rec_dir \"%s\" is not a valid directory" % (self.rec_dir))
 
-    def reload_programs(self, streamer, do_create = True, do_update = True, do_pause = False):
+        validate_streamer(self.streamer)
+
+    def get_info(self):
+        info = dict(vars(self), state=self.state)
+        del info['sched']
+        return info
+
+    @property
+    def state(self):
+        """
+        """
+        if not self.sched.running:
+            return DarState.SHUTDOWN
+        elif self.sched.state == schedulers.base.STATE_PAUSED:
+            return DarState.PAUSED
+        else:
+            return DarState.STARTED
+
+    def start_scheduler(self):
+        """
+        :return: bool
+        """
+        if self.state == DarState.STARTED:
+            return False
+        if self.state == DarState.PAUSED:
+            self.sched.resume()
+        else:
+            self.sched.start()
+        return True
+
+    def pause_scheduler(self):
+        """
+        :return: bool
+        """
+        if self.state != DarState.STARTED:
+            return False
+        self.sched.pause()
+        return True
+
+    def resume_scheduler(self):
+        """
+        :return: bool
+        """
+        if self.state != DarState.PAUSED:
+            return False
+        self.sched.resume()
+        return True
+
+    def stop_scheduler(self, wait_for_jobs = True):
+        """
+        :return: bool
+        """
+        if self.state == DarState.SHUTDOWN:
+            return False
+        self.sched.shutdown(wait=wait_for_jobs)
+        return True
+
+    def get_jobs(self):
+        """
+        :return: list of jobs (apscheduler.job)
+        """
+        # REVISIT: should we reset the state of the scheduler before returning???
+        if not self.sched.running:
+            self.sched.start(paused=True)
+        return self.sched.get_jobs()
+
+    def get_job(self, job_id):
+        """
+        :return: apscheduler.job
+        """
+        # REVISIT: should we reset the state of the scheduler before returning???
+        if not self.sched.running:
+            self.sched.start(paused=True)
+        return self.sched.get_job(job_id)
+
+    def reload_programs(self, do_create = True, do_update = True, do_pause = False):
         """Reload program definitions from ``config.yml`` and schedule jobs for them automatically
 
-        :param streamer: streamer name identifying parameters in ``config.yml``
         :param do_create: schedule new jobs for programs (defaults to True)
         :param do_update: update existing jobs for programs (defaults to True)
         :param do_pause: pause jobs for programs not found in config (defaults to False)
         :return: {'created': set(<ids>), 'updated': set(<ids>), 'paused': set(<ids>)}
         """
-        validate_streamer(streamer)
         # REVISIT: should we reset the state of the scheduler before returning???
         if not self.sched.running:
             self.sched.start(paused=True)
@@ -287,12 +379,12 @@ class Dar(object):
             trigger      = schedule_trigger(sched_info)
 
             name         = "%s [dur %s]" % (prog, str(dt.timedelta(0, duration)))
-            args         = (streamer, self.cfg_profile, url, media_type, filebase, duration)
+            args         = (self.streamer, self.cfg_profile, url, media_type, filebase, duration)
             # TODO: get parameters for the streamer from the config file (hard-wiring
             # values to use for now)!!!
             kwargs       = {'add_ts': True, 'verbose': 1}
-            self.sched.add_job(do_record, trigger, args=args, kwargs=kwargs, id=prog, name=name,
-                               replace_existing=True, misfire_grace_time=300)
+            self.sched.add_job('dar:do_record', trigger, args=args, kwargs=kwargs, id=prog,
+                               name=name, replace_existing=True, misfire_grace_time=300)
 
         new_jobs      = loaded_jobs.difference(current_jobs)
         existing_jobs = loaded_jobs.intersection(current_jobs)
@@ -307,40 +399,6 @@ class Dar(object):
                 log.debug("NOT pausing job for program \"%s\"" % (job_id))
 
         return {'created': created_jobs, 'updated': updated_jobs, 'paused': paused_jobs}
-
-    def get_jobs(self):
-        """
-        :return: list of jobs (apscheduler.job)
-        """
-        # REVISIT: should we reset the state of the scheduler before returning???
-        if not self.sched.running:
-            self.sched.start(paused=True)
-        return self.sched.get_jobs()
-
-    def get_job(self, job_id):
-        """
-        :return: apscheduler.job
-        """
-        # REVISIT: should we reset the state of the scheduler before returning???
-        if not self.sched.running:
-            self.sched.start(paused=True)
-        return self.sched.get_job(job_id)
-
-    def start_scheduler(self):
-        """
-        :return: void
-        """
-        if not self.sched.running:
-            self.sched.start()
-        else:
-            self.sched.resume()  # no-op if actively running (i.e. not paused)
-
-    def stop_scheduler(self, wait_for_jobs = True):
-        """
-        :return: void
-        """
-        if self.sched.running:
-            self.sched.shutdown(wait=wait_for_jobs)
 
 class Station(object):
     """
@@ -492,32 +550,30 @@ class Tuner(object):
 
 from time import sleep
 import click
-from core import dbg_hand
 
 @click.command()
 @click.option('--list',     'list_jobs', is_flag=True, help="List scheduled jobs")
 @click.option('--reload',   is_flag=True, help="Reload programs/jobs from config file")
 @click.option('--norun',    is_flag=True, help="Do not run the audio recorder (e.g. list or reload only)")
 @click.option('--time',     'run_time', default=9999999, help="Time (in seconds) to run (forever, if not specified)")
-@click.option('--streamer', default='vlc', help="Name of streamer in config file (defaults to 'vlc')")
 @click.option('--nowait',   is_flag=True, help="Do not wait for jobs to complete when time expires")
+@click.option('--streamer', default='vlc', help="Name of streamer in config file (defaults to 'vlc')")
 @click.option('--debug',    default=0, help="Debug level (0-3)")
-@click.option('--testing',  is_flag=True, help="Use 'testing' profile in config file")
+@click.option('--profile',  default=None, type=str, help="Profile in config.yml")
 #@click.argument('name',    default='all', required=True)
-def main(list_jobs, reload, norun, run_time, streamer, nowait, debug, testing):
+def main(list_jobs, reload, norun, run_time, nowait, streamer, debug, profile):
     """Digital Audio Recorder command line interface
     """
     if debug > 0:
         log.setLevel(logging.DEBUG if debug > 1 else logging.INFO)
         log.addHandler(dbg_hand)
-    profile = 'testing' if testing else None
 
-    dar = Dar(debug, profile)
+    dar = Dar(streamer, debug, profile)
 
     if reload:
         print("Loading/reloading jobs from config file...")
 
-        jobs = dar.reload_programs(streamer, do_create=True, do_update=True, do_pause=True)
+        jobs = dar.reload_programs(do_create=True, do_update=True, do_pause=True)
         for job in [dar.get_job(id) for id in jobs['created']]:
             print("  Added new job \"%s\":\n    %s" % (job.id, str(job)))
         for job in [dar.get_job(id) for id in jobs['updated']]:
@@ -538,7 +594,7 @@ def main(list_jobs, reload, norun, run_time, streamer, nowait, debug, testing):
         dar.start_scheduler()
         sleep(run_time)
 
-    dar.stop_scheduler()
+    dar.stop_scheduler(wait_for_jobs=(not nowait))
 
 if __name__ == '__main__':
     main()

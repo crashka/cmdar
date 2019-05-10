@@ -221,3 +221,37 @@ testing:
     db_dir:          'config'
     db_file:         'apscheduler_test.db'
     rec_dir:         '/pergamon/tmp'
+
+################
+# delta config #
+################
+delta:
+  streamers:
+    vlc:
+      subclass:      'VlcStreamer'
+      media_types:
+        audio/aacp:
+          codec:     'mp4a'
+          muxer:     'mp4'
+          file_type: 'm4a'
+
+        audio/mpeg:
+          codec:     'mp3'
+          muxer:     'mp3'
+          file_type: 'mp3'
+
+      ignore_errors:
+        - 'PulseAudio server connection failure: Connection refused'
+        - 'Failed to connect to the D-Bus session daemon: Unable to autolaunch a dbus-daemon without a $DISPLAY for X11'
+        - 'no suitable interface module'
+        - 'interface "dbus,none" initialization failed'
+        - 'no suitable interface module'
+        - 'interface "globalhotkeys,none" initialization failed'
+        - 'unimplemented query (264) in control'
+
+  scheduler:
+    jobstore:        'sqlalchemy'
+    # note: *_dir may be absolute, relative (to project), or empty
+    db_dir:          'config'
+    db_file:         'apscheduler.db'
+    rec_dir:         '/pergamon/tmp'
