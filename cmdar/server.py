@@ -4,7 +4,9 @@
 """DAR Server (based on Flask)
 """
 
+import sys
 import logging
+import threading
 
 from flask import Flask, request, jsonify
 import click
@@ -166,10 +168,11 @@ dar = None
 
 @click.command()
 @click.option('--streamer', default='vlc', help="Name of streamer in config file (defaults to 'vlc')")
+@click.option('--delay',    default=2, help="Delay (in secs) before starting scheduler (defaults to 2)")
 @click.option('--debug',    default=0, help="Debug level (0-3)")
 @click.option('--profile',  default=None, type=str, help="Profile in config.yml")
 @click.option('--public',   is_flag=True, help="Allow external access (outside of localhost)")
-def main(streamer, debug, profile, public):
+def main(streamer, delay, debug, profile, public):
     """Digital Audio Recorder server program (based on Flask)
     """
     if debug > 0:
@@ -179,9 +182,20 @@ def main(streamer, debug, profile, public):
 
     global dar
     dar = Dar(streamer, debug, profile)
-    dar.start_scheduler()
+    # defer starting scheduler in case Flask doesn't come up due to port conflict
+    # (or whatever)--reduce chance of race between servers for running jobs
+    start_timer = threading.Timer(delay, dar.start_scheduler)
+    start_timer.start()
 
-    app.run(host=host)
+    try:
+        app.run(host=host)
+    except OSError as e:
+        # trap known startup failure "[Errno 98] Address already in use"
+        if e.errno == 98:
+            start_timer.cancel()
+            log.error("Exiting due to OSError: %s)" % (e))
+            sys.exit(1)
+        raise e
 
 if __name__ == '__main__':
     main()

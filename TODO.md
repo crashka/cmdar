@@ -15,6 +15,7 @@
 ## Scheduler ##
 
 * Create usable ID for scheduled jobs (hash of name?)
+* Capture streamer exceptions in listener and add (somehow!) to parent Dar
 * BUG: "cannot schedule new futures after shutdown" error if creating 'immediate' job, but
   also specifying 'norun'
 
