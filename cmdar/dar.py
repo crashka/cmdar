@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""Digital Audio Recorder
+"""Digital Audio Recorder library
 """
 
 import os.path
@@ -83,7 +83,6 @@ def schedule_duration(sched):
     # boundary), but seconds will still be right (no need to muck with day or negativity)
     assert delta.days in (0, -1)
     return delta.seconds
-
 
 #########################
 # apscheduler functions #

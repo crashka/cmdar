@@ -53,12 +53,12 @@ GET    /dar/state                       - get DAR state [**]
 GET    /dar/start                       - start DAR (new jobs enabled) [**]
 GET    /dar/pause                       - pause DAR (no new jobs) [**]
 GET    /dar/resume                      - resume DAR (new jobs re-enabled) [**]
-GET    /dar/shutdown[?<params>]         - shutdown DAR (kill running jobs) [**]
+GET    /dar/shutdown[?<params>]         - shutdown DAR (kill running jobs by default) [**]
 
 GET    /stations/<name>/record?<params> - schedule manual recording
 
 GET    /programs/create?<params>        - create new program
-GET    /programs/reload[?<params>]      - reload from config file [**]
+GET    /programs/reload[?<params>]      - reload programs from config file [**]
 GET    /programs/<id>/update?<params>   - update program info
 GET    /programs/<id>/activate          - activate program
 GET    /programs/<id>/inactivate        - inactivate program
@@ -69,31 +69,50 @@ GET    /todos/<id>/requeue              - requeue todo item
 GET    /todos/<id>/cancel               - cancel todo item
 GET    /todos/<id>/delete               - delete todo item (same as ``cancel``???)
 
-[**] indicates implemented below
+[**] implemented below
 """
+
+#-----#
+# dar #
+#-----#
 
 @app.route('/dar')
 def dar_info():
+    """Show DAR state/info
+    """
     return jsonify(dar.get_info())
 
 @app.route('/dar/state')
 def dar_state():
+    """Get DAR state
+    """
     return jsonify(state=dar.state)
 
 @app.route('/dar/start')
 def dar_start():
+    """Start DAR (new jobs enabled)
+    """
     return jsonify(result=dar.start_scheduler())
 
 @app.route('/dar/pause')
 def dar_pause():
+    """Pause DAR (no new jobs)
+    """
     return jsonify(result=dar.pause_scheduler())
 
 @app.route('/dar/resume')
 def dar_resume():
+    """Resume DAR (new jobs re-enabled)
+    """
     return jsonify(result=dar.resume_scheduler())
 
 @app.route('/dar/shutdown')
 def dar_shutdown():
+    """Shutdown DAR (kill running jobs by default)
+
+    Supported params (defaults):
+      - wait_for_jobs (True)
+    """
     try:
         result = dar.stop_scheduler(**request.args)
     except TypeError as e:
@@ -101,8 +120,19 @@ def dar_shutdown():
         return "Error: " + str(e), 400
     return jsonify(result=result)
 
+#----------#
+# programs #
+#----------#
+
 @app.route('/programs/reload')
 def programs_reload():
+    """Reload programs from config file
+
+    Supported params (defaults):
+      - do_create (True)
+      - do_update (True)
+      - do_pause (False)
+    """
     try:
         result = dar.reload_programs(**request.args)
     except TypeError as e:
@@ -110,8 +140,14 @@ def programs_reload():
         return "Error: " + str(e), 400
     return jsonify({i: list(j) for i, j in result.items()})
 
+#--------#
+# /todos #
+#--------#
+
 @app.route('/todos')
 def todos_list():
+    """List todo items (state/info)
+    """
     todos = []
     for job in dar.get_jobs():
         status = TodoState.QUEUED if job.next_run_time else TodoState.SUSPENDED
