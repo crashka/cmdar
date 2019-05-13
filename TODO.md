@@ -2,8 +2,7 @@
 
 ## Server ##
 
-* ~~Flask server (with mutual exclusion through listening port)~~
-* Mutual exclusion for command line scheduler (dar.py)
+* Mutual exclusion (or at least race protection) for command line scheduler (dar.py)
 
 ## DAR ##
 
@@ -25,7 +24,6 @@
 
 * Compensate for buffering of pre-start-time stream, end at scheduled end (pass start_time
   into do_record() and save_stream())
-* ~~Ignore expected and/or harmless errors that don't affect processing (list in config.yml)~~
 * Check integrity of output file after stream is closed (check and balance for ignoring
   errors in stdeff
 * Compensate for late start (grace period), end at scheduled time
@@ -37,11 +35,11 @@
 
 ## Testing ##
 
-* ~~Fix the command line for selecting config profiles (i.e. revisit --testing flag)~~
-    * ~~'profile' should be an arg to Dar.\_\_init\_\_(), do\_record(), and Streamer.get()~~
+* Yes
 
-## Roadmap (Big Ticket Items) ##
+## Roadmap (Bigger Ticket Items) ##
 
+* Use Mutagen to write recordings metadata to output files
 * Active tuner(s) recording into circular buffer(s) (a la TiVo)
     * UPnP streamer serving content from circular buffer(s)
     * Ability to convert active buffer into a recording (set new end_time)
