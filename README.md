@@ -137,34 +137,34 @@ The currently defined "section" names within a config "profile" are as follows:
 
 ### stations ###
 
-The list of radio stations (or other online audio streams) that the streamer should know
-about in order to record programs and/or manual recordings.
+> The list of radio stations (or other online audio streams) that the streamer should know
+> about in order to record programs and/or manual recordings.
 
 ### programs ###
 
-The list of radio programs that you may want subscribe to (i.e. automatically record).
-For now, only `weekly` schedule types are supported, but daily programs can be specified
-using "`Mon-Sun`" as a value for the `days` parameter.  Each program must specify
-`start_time`, and either `end-time` or `duration`.
+> The list of radio programs that you may want subscribe to (i.e. automatically record).
+> For now, only `weekly` schedule types are supported, but daily programs can be specified
+> using "`Mon-Sun`" as a value for the `days` parameter.  Each program must specify
+> `start_time`, and either `end-time` or `duration`.
 
 ### streamers ###
 
-The only streamer currently supported is `vlc`, though you can override this section in
-your profile in order to ignore the incidental/inconsequential streamer (i.e. vlc) errors
-that may be present in your environment.  See `ignore_errors` in the `caladan` profile
-provided, as an example of what I have seen (and not yet rectified) in my current
-environment.
+> The only streamer currently supported is `vlc`, though you can override this section in
+> your profile in order to ignore the incidental/inconsequential streamer (i.e. vlc) errors
+> that may be present in your environment.  See `ignore_errors` in the `caladan` profile
+> provided, as an example of what I have seen (and not yet rectified) in my current
+> environment.
 
 ### scheduler ###
 
-The only scheduler currently supported is `apscheduler` (PyPI package).  This section can
-be overridden in your profile to specify a destination directory for recordings (`rec_dir`
-parameter).
+> The only scheduler currently supported is `apscheduler` (PyPI package).  This section can
+> be overridden in your profile to specify a destination directory for recordings (`rec_dir`
+> parameter).
 
 ### server ###
 
-This section is not currently used, so disregard for now (port and host values used by
-Flask are currently hardwired to defaults).
+> This section is not currently used, so disregard for now (port and host values used by
+> Flask are currently hardwired to defaults).
 
 ## REST API ##
 
@@ -188,51 +188,51 @@ future date, start time, and end time/duration).
 
 **`GET http://<host>:5000/dar`**
 
-Show DAR state/info
+> Show DAR state/info
 
 **`GET http://<host>:5000/dar/state`**
 
-Get DAR state
+> Get DAR state
 
 **`GET http://<host>:5000/dar/start`**
 
-Start DAR (new jobs will be spawned when schedule triggers fire)
+> Start DAR (new jobs will be spawned when schedule triggers fire)
 
 **`GET http://<host>:5000/dar/pause`**
 
-Pause DAR (new jobs will not be spawned)
+> Pause DAR (new jobs will not be spawned)
 
 **`GET http://<host>:5000/dar/resume`**
 
-Resume DAR (spawning of new jobs will be re-enabled)
+> Resume DAR (spawning of new jobs will be re-enabled)
 
 **`GET http://<host>:5000/dar/shutdown[?<params>]`**
 
-Shutdown DAR (running jobs will be killed by default)
-
-The following URL parameters are supported:
-
-* `wait_for_jobs=<bool>` &ndash; wait for running jobs to complete before shutting down
-  scheduler [defaults to `true`]
+> Shutdown DAR (running jobs will be killed by default)
+> 
+> The following URL parameters are supported:
+> 
+> * `wait_for_jobs=<bool>` &ndash; wait for running jobs to complete before shutting down
+>   scheduler [defaults to `true`]
 
 **`GET http://<host>:5000/programs/reload[?<params>]`**
 
-Create repeating jobs for programs defined in `config.yml`.  Note that the action name in
-this URL is a misnomer, the configuration is not actually ***re***-loaded from the file
-(rather, the configuration at server instantiation-time is cached)
-
-The following URL parameters are supported:
-
-* `do_create=<bool>` &ndash; schedule jobs for programs not currently on the Todo list
-  [defaults to `true`]
-* `do_update=<bool>` &ndash; update schedule information for programs already on the Todo
-  list [defaults to `true`]
-* `do_pause=<bool>` &ndash; pause active programs (no new jobs) that are not (no longer?)
-  represented in the configuration [defaults to `false`]
+> Create repeating jobs for programs defined in `config.yml`.  Note that the action name in
+> this URL is a misnomer, the configuration is not actually ***re***-loaded from the file
+> (rather, the configuration at server instantiation-time is cached)
+> 
+> The following URL parameters are supported:
+> 
+> * `do_create=<bool>` &ndash; schedule jobs for programs not currently on the Todo list
+>   [defaults to `true`]
+> * `do_update=<bool>` &ndash; update schedule information for programs already on the Todo
+>   list [defaults to `true`]
+> * `do_pause=<bool>` &ndash; pause active programs (no new jobs) that are not (no longer?)
+>   represented in the configuration [defaults to `false`]
 
 **`GET http://<host>:5000/todos[?<params>]`**
 
-List Todo Items (state/info)
+> List Todo Items (state/info)
 
 ## License ##
 
