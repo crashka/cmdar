@@ -7,6 +7,8 @@
 
 ## DAR ##
 
+* Change reload_programs() to record_programs()
+    * Note: we don't really re-read the config file (nor should we)
 * Rectify Program and Todo Item
     * Don't pause manual todo items when reloading programs
 * Implement manual recording (refactor reload_programs)

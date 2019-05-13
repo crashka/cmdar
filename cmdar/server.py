@@ -74,9 +74,9 @@ GET    /todos/<id>/delete               - delete todo item (same as ``cancel``??
 [**] implemented below
 """
 
-#-----#
-# dar #
-#-----#
+#------#
+# /dar #
+#------#
 
 @app.route('/dar')
 def dar_info():
@@ -112,7 +112,7 @@ def dar_resume():
 def dar_shutdown():
     """Shutdown DAR (kill running jobs by default)
 
-    Supported params (defaults):
+    Parameters (default):
       - wait_for_jobs (True)
     """
     try:
@@ -122,15 +122,15 @@ def dar_shutdown():
         return "Error: " + str(e), 400
     return jsonify(result=result)
 
-#----------#
-# programs #
-#----------#
+#-----------#
+# /programs #
+#-----------#
 
 @app.route('/programs/reload')
 def programs_reload():
     """Reload programs from config file
 
-    Supported params (defaults):
+    Parameters (default):
       - do_create (True)
       - do_update (True)
       - do_pause (False)
@@ -193,7 +193,7 @@ def main(streamer, delay, debug, profile, public):
         # trap known startup failure "[Errno 98] Address already in use"
         if e.errno == 98:
             start_timer.cancel()
-            log.error("Exiting due to OSError: %s)" % (e))
+            log.error("Exiting due to OSError: %s" % (e))
             sys.exit(1)
         raise e
 

@@ -2,11 +2,6 @@
 ##################
 # default config #
 ##################
-#
-# Note: other profiles inherit from here on a per-section bassis (meaning,
-# an entire section is replaced, if specified; deeper-level overrides not
-# currently supported)
-
 default:
   stations:
     WWFM:
@@ -83,8 +78,78 @@ default:
         - 'http://14093.live.streamtheworld.com:3690/KUSCMP128_SC'
       media_type:    'audio/mpeg'
 
-  # specify ``programs`` in site-specific profile
-  programs:          {}
+  programs:
+    'WWFM Morning (Mon)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Mon'
+        start_time:  '10:00'
+        end_time:    '13:00'
+
+    'WWFM Morning (Tue-Fri)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Tue-Fri'
+        start_time:  '09:00'
+        end_time:    '13:00'
+
+    'WWFM Afternoon (Mon-Fri)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Mon-Fri'
+        start_time:  '13:00'
+        end_time:    '16:00'
+
+    'WWFM Weekend Morning (Bill Jerome)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Sat,Sun'
+        start_time:  '05:00'
+        end_time:    '09:00'
+
+    'Modern Times (Alan Chapman)':
+      station:       'KUSC'
+      schedule:
+        type:        'weekly'
+        days:        'Sat'
+        start_time:  '22:00'
+        duration:    '02:00'
+
+    'Soul Music (Brian Lauritzen)':
+      station:       'KUSC'
+      schedule:
+        type:        'weekly'
+        days:        'Sun'
+        start_time:  '06:00'
+        end_time:    '09:00'
+
+    'A Musical Offering (Alan Chapman)':
+      station:       'KUSC'
+      schedule:
+        type:        'weekly'
+        days:        'Sun'
+        start_time:  '09:00'
+        end_time:    '11:00'
+
+    'The Lost Chord (Ross Amico)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Sun'
+        start_time:  '19:00'
+        end_time:    '20:00'
+
+    'Half Past (Carl Hemmingsen)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Sun'
+        start_time:  '20:00'
+        end_time:    '21:00'
 
   streamers:
     vlc:
@@ -109,121 +174,28 @@ default:
     db_file:         'apscheduler.db'
     rec_dir:         '/pergamon/radio'
 
-  # NOTE: this section is not currently used!!!
   server:
     port:            5000
 
 ##################
-# caladan config #
+# testing config #
 ##################
-caladan:
+testing:
   programs:
-    'WWFM Morning (Mon)':
-      station:       'WWFM'
+    'Test Program - immediate':
+      station:       'WQXR'
+      schedule:
+        type:        'immediate'
+        duration:    '00:00:10'
+
+    'Test Program - scheduled':
+      station:       'WQXR'
       schedule:
         type:        'weekly'
-        days:        'Mon'
-        start_time:  '10:00'
-        end_time:    '13:00'
+        days:        'Mon-Sun'
+        start_time:  '17:00:00'
+        end_time:    '17:01:00'
 
-    'Celebrating Our Musical Future (WWFM)':
-      station:       'WWFM'
-      schedule:
-        type:        'weekly'
-        days:        'Mon'
-        start_time:  '17:00'
-        end_time:    '19:00'
-
-    'WWFM Morning (Tue-Fri)':
-      station:       'WWFM'
-      schedule:
-        type:        'weekly'
-        days:        'Tue-Fri'
-        start_time:  '09:00'
-        end_time:    '13:00'
-
-    'WWFM Afternoon (Mon-Fri)':
-      station:       'WWFM'
-      schedule:
-        type:        'weekly'
-        days:        'Mon-Fri'
-        start_time:  '13:00'
-        end_time:    '16:00'
-
-    'Friday Evening Concert (WWFM)':
-      station:       'WWFM'
-      schedule:
-        type:        'weekly'
-        days:        'Fri'
-        start_time:  '17:00'
-        end_time:    '19:00'
-
-    'WWFM Weekend Morning (Bill Jerome)':
-      station:       'WWFM'
-      schedule:
-        type:        'weekly'
-        days:        'Sat,Sun'
-        start_time:  '05:00'
-        end_time:    '09:00'
-
-    'Modern Times (Alan Chapman)':
-      station:       'KUSC'
-      schedule:
-        type:        'weekly'
-        days:        'Sat'
-        start_time:  '22:00'
-        end_time:    '00:00'
-
-    'Soul Music (Brian Lauritzen)':
-      station:       'KUSC'
-      schedule:
-        type:        'weekly'
-        days:        'Sun'
-        start_time:  '06:00'
-        end_time:    '09:00'
-
-    'A Musical Offering (Alan Chapman)':
-      station:       'KUSC'
-      schedule:
-        type:        'weekly'
-        days:        'Sun'
-        start_time:  '09:00'
-        end_time:    '11:00'
-
-    'With Heart and Voice (Peter DuBois)':
-      station:       'WWFM'
-      schedule:
-        type:        'weekly'
-        days:        'Sun'
-        start_time:  '10:00'
-        end_time:    '11:00'
-
-    'Sounds Choral (WWFM)':
-      station:       'WWFM'
-      schedule:
-        type:        'weekly'
-        days:        'Sun'
-        start_time:  '11:00'
-        end_time:    '12:00'
-
-    'The Lost Chord (Ross Amico)':
-      station:       'WWFM'
-      schedule:
-        type:        'weekly'
-        days:        'Sun'
-        start_time:  '19:00'
-        end_time:    '20:00'
-
-    'Half Past (Carl Hemmingsen)':
-      station:       'WWFM'
-      schedule:
-        type:        'weekly'
-        days:        'Sun'
-        start_time:  '20:00'
-        end_time:    '21:00'
-
-  # overriding ``streamers`` in order to specify errors to ignore (don't have
-  # the time to figure out to configure audio layers on Ubuntu Server)
   streamers:
     vlc:
       subclass:      'VlcStreamer'
@@ -241,22 +213,15 @@ caladan:
       ignore_errors:
         - 'PulseAudio server connection failure: Connection refused'
         - 'Failed to connect to the D-Bus session daemon: Unable to autolaunch a dbus-daemon without a $DISPLAY for X11'
-        - 'Failed to connect to the D-Bus session daemon: /usr/bin/dbus-launch terminated abnormally without any error message'
         - 'no suitable interface module'
         - 'interface "dbus,none" initialization failed'
         - 'no suitable interface module'
         - 'interface "globalhotkeys,none" initialization failed'
         - 'unimplemented query (264) in control'
 
-  # overriding ``scheduler`` in order to specify base directory for recordings
   scheduler:
     jobstore:        'sqlalchemy'
     # note: *_dir may be absolute, relative (to project), or empty
     db_dir:          'config'
-    db_file:         'apscheduler.db'
-    rec_dir:         '/pergamon/radio'
-
-  # NOTE: this section is not currently used!!!
-  server:
-    host:            0.0.0.0
-    port:            5000
+    db_file:         'apscheduler_testing.db'
+    rec_dir:         '/pergamon/testing'
