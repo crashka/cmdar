@@ -21,6 +21,10 @@ default:
       stream_url:    'https://stream.wqxr.org/wqxr-web'
       media_type:    'audio/mpeg'
 
+    WSHU:
+      stream_url:    'https://wshu-iad.streamguys1.com/wshu-air'
+      media_type:    'audio/aacp'
+
     KUSC:
       stream_url:
         - 'http://16613.live.streamtheworld.com:80/KUSCAAC96_SC'
@@ -150,6 +154,14 @@ caladan:
         start_time:  '13:00'
         end_time:    '16:00'
 
+    'Extra Eclectic (Steve Seel)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Wed'
+        start_time:  '20:00'
+        end_time:    '22:00'
+
     'Friday Evening Concert (WWFM)':
       station:       'WWFM'
       schedule:
@@ -157,6 +169,14 @@ caladan:
         days:        'Fri'
         start_time:  '17:00'
         end_time:    '19:00'
+
+    'Millennium of Music (WWFM)':
+      station:       'WWFM'
+      schedule:
+        type:        'weekly'
+        days:        'Fri'
+        start_time:  '19:00'
+        end_time:    '20:00'
 
     'WWFM Weekend Morning (Bill Jerome)':
       station:       'WWFM'
@@ -174,12 +194,28 @@ caladan:
         start_time:  '22:00'
         end_time:    '00:00'
 
-    'Soul Music (Brian Lauritzen)':
+    'Sunday Baroque (WSHU)':
+      station:       'WSHU'
+      schedule:
+        type:        'weekly'
+        days:        'Sun'
+        start_time:  '04:00'
+        end_time:    '08:00'
+
+    #'Soul Music (Brian Lauritzen)':
+    #  station:       'KUSC'
+    #  schedule:
+    #    type:        'weekly'
+    #    days:        'Sun'
+    #    start_time:  '06:00'
+    #    end_time:    '09:00'
+
+    'A Joyful Noise (Brian Lauritzen)':
       station:       'KUSC'
       schedule:
         type:        'weekly'
         days:        'Sun'
-        start_time:  '06:00'
+        start_time:  '07:00'
         end_time:    '09:00'
 
     'A Musical Offering (Alan Chapman)':
